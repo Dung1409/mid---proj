@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: Payment Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5004
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check whether payment-service is running.
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                required:
+                  - status
+  /payments:
+    post:
+      summary: Process payment
+      description: Process payment for an order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                orderId:
+                  type: string
+                amount:
+                  type: number
+              required:
+                - orderId
+                - amount
+      responses:
+        "200":
+          description: Payment processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - SUCCESS
+                      - FAILED
+                required:
+                  - status
+        "400":
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid input data
+                required:
+                  - error

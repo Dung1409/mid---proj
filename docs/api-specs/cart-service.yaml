@@ -1,0 +1,221 @@
+openapi: 3.0.3
+info:
+  title: Cart Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5002
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check whether cart-service is running.
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                required:
+                  - status
+  /cart/items:
+    post:
+      summary: Add item to cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                itemId:
+                  type: integer
+                name:
+                  type: string
+                price:
+                  type: number
+                quantity:
+                  type: integer
+              required:
+                - itemId
+                - name
+                - price
+                - quantity
+      responses:
+        "200":
+          description: Item added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Item added
+                required:
+                  - message
+        "400":
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /cart:
+    get:
+      summary: Get cart
+      responses:
+        "200":
+          description: Current cart and total
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        itemId:
+                          type: integer
+                        name:
+                          type: string
+                        price:
+                          type: number
+                        quantity:
+                          type: integer
+                  total:
+                    type: number
+                required:
+                  - items
+                  - total
+  /cart/items/{itemId}:
+    put:
+      summary: Update item quantity
+      parameters:
+        - in: path
+          name: itemId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                quantity:
+                  type: integer
+              required:
+                - quantity
+      responses:
+        "200":
+          description: Quantity updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+        "400":
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+    delete:
+      summary: Remove item from cart
+      parameters:
+        - in: path
+          name: itemId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Item removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Item removed
+                required:
+                  - message
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+  /cart/checkout:
+    post:
+      summary: Checkout cart
+      description: Send cart data to Task Service to create order.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:
+                  type: string
+                address:
+                  type: string
+              required:
+                - phone
+                - address
+      responses:
+        "202":
+          description: Order accepted for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                  message:
+                    type: string
+                    example: Order is being processed
+                required:
+                  - requestId
+                  - message
+        "400":
+          description: Checkout failed or cart empty
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Cart is empty
+                required:
+                  - error

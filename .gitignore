@@ -1,0 +1,48 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# VS Code (keep shared settings if needed)
+.vscode/settings.json
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
+
+# Java / Spring Boot build outputs
+**/target/
+**/build/
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+logs/
+
+# Test / coverage outputs
+coverage/
+test-results/
+
+# Frontend dependencies (if frontend later uses Node tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Docker local artifacts
+docker-data/
+*.tar

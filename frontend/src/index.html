@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SOA Order Flow</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --panel: rgba(15, 23, 42, 0.78);
+        --panel-2: rgba(30, 41, 59, 0.9);
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #22c55e;
+        --accent-2: #38bdf8;
+        --danger: #fb7185;
+        --border: rgba(148, 163, 184, 0.2);
+        --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 32%),
+          radial-gradient(circle at top right, rgba(34, 197, 94, 0.18), transparent 28%),
+          linear-gradient(135deg, #020617 0%, #0f172a 50%, #111827 100%);
+      }
+
+      .shell {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 32px 20px 48px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.4fr 0.9fr;
+        gap: 20px;
+        align-items: stretch;
+        margin-bottom: 20px;
+      }
+
+      .hero-card, .panel {
+        background: linear-gradient(180deg, var(--panel), rgba(2, 6, 23, 0.92));
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(14px);
+      }
+
+      .hero-card { padding: 28px; }
+      .title {
+        margin: 0 0 10px;
+        font-size: clamp(32px, 5vw, 56px);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+      }
+      .subtitle { margin: 0; color: var(--muted); max-width: 720px; }
+
+      .meta {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .badge {
+        border: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.4);
+        border-radius: 16px;
+        padding: 14px 16px;
+      }
+      .badge b { display: block; margin-bottom: 4px; }
+      .badge span { color: var(--muted); font-size: 13px; }
+
+      .status-card {
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(34, 197, 94, 0.12);
+        color: #86efac;
+        width: fit-content;
+        font-weight: 600;
+      }
+
+      .status-box {
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+        padding: 16px;
+        min-height: 120px;
+        white-space: pre-wrap;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1.15fr 0.95fr;
+        gap: 20px;
+      }
+
+      .panel { padding: 20px; }
+      .panel h2 { margin: 0 0 16px; font-size: 22px; }
+      .section-note { margin: -10px 0 18px; color: var(--muted); font-size: 14px; }
+
+      .menu-list, .cart-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid var(--border);
+      }
+
+      .item h3 { margin: 0 0 6px; font-size: 18px; }
+      .item p { margin: 0; color: var(--muted); }
+      .price { font-weight: 700; color: #fde68a; }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+        align-items: center;
+      }
+
+      button, input {
+        font: inherit;
+      }
+      button {
+        border: 0;
+        padding: 11px 14px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: transform 0.15s ease, opacity 0.15s ease;
+      }
+      button:hover { transform: translateY(-1px); }
+      button:active { transform: translateY(0); }
+      .btn-primary { background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: #04111e; font-weight: 700; }
+      .btn-secondary { background: rgba(148, 163, 184, 0.15); color: var(--text); border: 1px solid var(--border); }
+      .btn-danger { background: rgba(251, 113, 133, 0.14); color: #fecdd3; border: 1px solid rgba(251, 113, 133, 0.24); }
+
+      .form {
+        display: grid;
+        gap: 10px;
+      }
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.6);
+        color: var(--text);
+        outline: none;
+      }
+      input:focus {
+        border-color: rgba(56, 189, 248, 0.55);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+      }
+
+      .cart-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        margin-top: 12px;
+        border-radius: 16px;
+        background: rgba(34, 197, 94, 0.08);
+        border: 1px solid rgba(34, 197, 94, 0.18);
+      }
+
+      .status-history {
+        display: grid;
+        gap: 10px;
+      }
+
+      .history-item {
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.58);
+        border: 1px solid var(--border);
+      }
+
+      .small { font-size: 13px; color: var(--muted); }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+      @media (max-width: 1080px) {
+        .hero, .grid { grid-template-columns: 1fr; }
+        .meta, .form-row { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <article class="hero-card">
+          <h1 class="title">SOA Order Flow</h1>
+          <p class="subtitle">Chọn món từ menu, thêm vào cart, sửa số lượng, checkout và theo dõi Saga status ngay trên một màn hình.</p>
+          <div class="meta">
+            <div class="badge"><b>Flow 1</b><span>Chọn món -> thêm cart -> checkout</span></div>
+            <div class="badge"><b>Flow 2</b><span>Chỉnh số lượng trong cart -> checkout</span></div>
+            <div class="badge"><b>Saga</b><span>Task service sẽ tạo order và thanh toán</span></div>
+          </div>
+        </article>
+        <aside class="panel status-card">
+          <div class="status-pill">Live Status</div>
+          <div id="gatewayStatus" class="small">API Gateway: checking...</div>
+          <div id="checkoutStatus" class="status-box">Chưa có đơn hàng nào được tạo.</div>
+          <div class="small mono">API Base: <span id="apiBaseLabel"></span></div>
+        </aside>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Menu</h2>
+          <p class="section-note">Tải menu từ gateway và thêm trực tiếp vào cart.</p>
+          <div id="menuList" class="menu-list"></div>
+        </article>
+
+        <article class="panel">
+          <h2>Cart & Checkout</h2>
+          <p class="section-note">Có thể sửa số lượng, xóa item, rồi checkout để tạo order.</p>
+
+          <div id="cartList" class="cart-list"></div>
+
+          <div class="cart-summary">
+            <div>
+              <div class="small">Tổng tiền</div>
+              <div id="cartTotal" style="font-size: 24px; font-weight: 800;">0</div>
+            </div>
+            <button class="btn-secondary" id="refreshCartBtn">Refresh Cart</button>
+          </div>
+
+          <div style="height: 16px"></div>
+
+          <form id="checkoutForm" class="form">
+            <div class="form-row">
+              <input id="phoneInput" name="phone" type="text" placeholder="Phone" required />
+              <input id="addressInput" name="address" type="text" placeholder="Address" required />
+            </div>
+            <button class="btn-primary" type="submit">Checkout</button>
+          </form>
+        </article>
+      </section>
+
+      <section style="height: 20px"></section>
+
+      <section class="panel">
+        <h2>Saga Timeline</h2>
+        <p class="section-note">Sau khi checkout, trạng thái sẽ được poll từ task-service.</p>
+        <div id="statusHistory" class="status-history"></div>
+      </section>
+    </main>
+
+    <script>
+      const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8080';
+      const state = {
+        menu: [],
+        cart: [],
+        activeRequestId: null,
+        statusTimer: null,
+      };
+
+      const menuList = document.getElementById('menuList');
+      const cartList = document.getElementById('cartList');
+      const cartTotal = document.getElementById('cartTotal');
+      const checkoutStatus = document.getElementById('checkoutStatus');
+      const statusHistory = document.getElementById('statusHistory');
+      const gatewayStatus = document.getElementById('gatewayStatus');
+      const apiBaseLabel = document.getElementById('apiBaseLabel');
+      const refreshCartBtn = document.getElementById('refreshCartBtn');
+      const checkoutForm = document.getElementById('checkoutForm');
+
+      apiBaseLabel.textContent = API_BASE_URL;
+
+      function money(value) {
+        return new Intl.NumberFormat('vi-VN').format(Number(value || 0));
+      }
+
+      function setHistory(items) {
+        if (!items.length) {
+          statusHistory.innerHTML = '<div class="history-item">Chưa có dữ liệu saga.</div>';
+          return;
+        }
+
+        statusHistory.innerHTML = items.map((entry) => `
+          <div class="history-item">
+            <div><b>${entry.title}</b></div>
+            <div class="small">${entry.detail}</div>
+          </div>
+        `).join('');
+      }
+
+      function appendHistory(title, detail) {
+        const current = Array.from(statusHistory.querySelectorAll('.history-item')).map((el) => ({
+          title: el.querySelector('b')?.textContent || '',
+          detail: el.querySelector('.small')?.textContent || ''
+        }));
+        current.unshift({ title, detail });
+        setHistory(current.slice(0, 8));
+      }
+
+      async function api(path, options = {}) {
+        const response = await fetch(`${API_BASE_URL}${path}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(options.headers || {}),
+          },
+          ...options,
+        });
+
+        const text = await response.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+
+        if (!response.ok) {
+          const message = data?.error || data?.message || response.statusText;
+          throw new Error(message);
+        }
+
+        return data;
+      }
+
+      function renderMenu() {
+        if (!state.menu.length) {
+          menuList.innerHTML = '<div class="item"><div><h3>Menu trống</h3><p>Không có món nào để hiển thị.</p></div></div>';
+          return;
+        }
+
+        menuList.innerHTML = state.menu.map((item) => `
+          <div class="item">
+            <div>
+              <h3>${item.name}</h3>
+              <p class="price">${money(item.price)} đ</p>
+              <p class="small">Item ID: ${item.id}</p>
+            </div>
+            <div class="actions">
+              <button class="btn-primary" data-add="${item.id}">Add to cart</button>
+            </div>
+          </div>
+        `).join('');
+
+        menuList.querySelectorAll('[data-add]').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const id = Number(btn.getAttribute('data-add'));
+            const item = state.menu.find((entry) => entry.id === id);
+            try {
+              await api('/api/cart/cart/items', {
+                method: 'POST',
+                body: JSON.stringify({
+                  itemId: item.id,
+                  name: item.name,
+                  price: item.price,
+                  quantity: 1,
+                }),
+              });
+              appendHistory('Item added', `${item.name} đã được thêm vào cart.`);
+              await loadCart();
+            } catch (error) {
+              appendHistory('Add failed', error.message);
+              alert(error.message);
+            }
+          });
+        });
+      }
+
+      function renderCart() {
+        if (!state.cart.length) {
+          cartList.innerHTML = '<div class="item"><div><h3>Cart trống</h3><p>Hãy thêm món từ menu.</p></div></div>';
+        } else {
+          cartList.innerHTML = state.cart.map((item) => `
+            <div class="item">
+              <div>
+                <h3>${item.name}</h3>
+                <p class="small">Item ID: ${item.itemId}</p>
+                <p class="price">${money(item.price)} đ x ${item.quantity}</p>
+              </div>
+              <div class="actions">
+                <input type="number" min="1" value="${item.quantity}" data-qty="${item.itemId}" style="width: 90px" />
+                <button class="btn-secondary" data-update="${item.itemId}">Update</button>
+                <button class="btn-danger" data-remove="${item.itemId}">Remove</button>
+              </div>
+            </div>
+          `).join('');
+
+          cartList.querySelectorAll('[data-update]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              const id = Number(btn.getAttribute('data-update'));
+              const input = cartList.querySelector(`[data-qty="${id}"]`);
+              try {
+                await api(`/api/cart/cart/items/${id}`, {
+                  method: 'PUT',
+                  body: JSON.stringify({ quantity: Number(input.value) }),
+                });
+                appendHistory('Cart updated', `Item ${id} quantity updated to ${input.value}.`);
+                await loadCart();
+              } catch (error) {
+                appendHistory('Update failed', error.message);
+                alert(error.message);
+              }
+            });
+          });
+
+          cartList.querySelectorAll('[data-remove]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              const id = Number(btn.getAttribute('data-remove'));
+              try {
+                await api(`/api/cart/cart/items/${id}`, { method: 'DELETE' });
+                appendHistory('Item removed', `Item ${id} removed from cart.`);
+                await loadCart();
+              } catch (error) {
+                appendHistory('Remove failed', error.message);
+                alert(error.message);
+              }
+            });
+          });
+        }
+
+        const total = state.cart.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
+        cartTotal.textContent = `${money(total)} đ`;
+      }
+
+      async function loadMenu() {
+        try {
+          const data = await api('/api/menu/menu/items');
+          state.menu = data.items || [];
+          renderMenu();
+          gatewayStatus.textContent = 'API Gateway: ready';
+        } catch (error) {
+          gatewayStatus.textContent = `API Gateway: ${error.message}`;
+          menuList.innerHTML = '<div class="item"><div><h3>Không tải được menu</h3><p>Kiểm tra gateway hoặc backend.</p></div></div>';
+        }
+      }
+
+      async function loadCart() {
+        try {
+          const data = await api('/api/cart/cart');
+          state.cart = data.items || [];
+          renderCart();
+        } catch (error) {
+          cartList.innerHTML = '<div class="item"><div><h3>Không tải được cart</h3><p>Kiểm tra gateway hoặc backend.</p></div></div>';
+          cartTotal.textContent = '0 đ';
+        }
+      }
+
+      async function pollStatus(requestId) {
+        if (state.statusTimer) clearInterval(state.statusTimer);
+
+        const update = async () => {
+          try {
+            const status = await api(`/api/task/task/status/${requestId}`);
+            checkoutStatus.textContent = JSON.stringify(status, null, 2);
+            appendHistory('Saga status', `${status.status} - ${status.message}`);
+            if (['PAID', 'PAYMENT_FAILED'].includes(status.status)) {
+              clearInterval(state.statusTimer);
+              state.statusTimer = null;
+            }
+          } catch (error) {
+            checkoutStatus.textContent = `Không lấy được status: ${error.message}`;
+          }
+        };
+
+        await update();
+        state.statusTimer = setInterval(update, 2500);
+      }
+
+      checkoutForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!state.cart.length) {
+          alert('Cart is empty');
+          return;
+        }
+
+        const payload = {
+          phone: document.getElementById('phoneInput').value.trim(),
+          address: document.getElementById('addressInput').value.trim(),
+        };
+
+        try {
+          const result = await api('/api/cart/cart/checkout', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+          });
+          state.activeRequestId = result.requestId;
+          checkoutStatus.textContent = JSON.stringify(result, null, 2);
+          appendHistory('Checkout submitted', `Request ${result.requestId} created.`);
+          await loadCart();
+          await pollStatus(result.requestId);
+        } catch (error) {
+          checkoutStatus.textContent = error.message;
+          appendHistory('Checkout failed', error.message);
+          alert(error.message);
+        }
+      });
+
+      refreshCartBtn.addEventListener('click', loadCart);
+
+      setHistory([]);
+      loadMenu();
+      loadCart();
+    </script>
+  </body>
+</html>

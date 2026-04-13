@@ -1,0 +1,65 @@
+openapi: 3.0.3
+info:
+  title: Menu Service API
+  version: 1.0.0
+servers:
+  - url: http://localhost:5001
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check whether menu-service is running.
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                required:
+                  - status
+
+  /menu/items:
+    get:
+      summary: Get menu items
+      description: Tra ve danh sach mon an trong menu.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          example: 1
+                        name:
+                          type: string
+                          example: Pho Bo
+                        price:
+                          type: integer
+                          example: 45000
+                required:
+                  - items
+        "400":
+          description: Not found items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  erroe:
+                    type: string
+                    example: Not found items
+                required:
+                  - error

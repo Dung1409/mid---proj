@@ -1,0 +1,181 @@
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - gateway
+    networks:
+      - app-network
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "${GATEWAY_PORT:-8080}:8000"
+    depends_on:
+      - menu-service
+      - cart-service
+      - order-service
+      - payment-service
+      - task-service
+    networks:
+      - app-network
+
+  menu-service:
+    build: ./services/menu-service
+    ports:
+      - "${MENU_SERVICE_PORT:-5001}:5000"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: menu-db
+      DB_PORT: 3306
+      DB_NAME: menu_db
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${MENU_DB_PASSWORD:-menuchangeme}
+    depends_on:
+      menu-db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  cart-service:
+    build: ./services/cart-service
+    ports:
+      - "${CART_SERVICE_PORT:-5002}:5000"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: cart-db
+      DB_PORT: 3306
+      DB_NAME: cart_db
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${CART_DB_PASSWORD:-cartchangeme}
+    depends_on:
+      cart-db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  order-service:
+    build: ./services/order-service
+    ports:
+      - "${ORDER_SERVICE_PORT:-5003}:5000"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: order-db
+      DB_PORT: 3306
+      DB_NAME: order_db
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${ORDER_DB_PASSWORD:-orderchangeme}
+    depends_on:
+      order-db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  payment-service:
+    build: ./services/payment-service
+    ports:
+      - "${PAYMENT_SERVICE_PORT:-5004}:5000"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: payment-db
+      DB_PORT: 3306
+      DB_NAME: payment_db
+      DB_USER: ${DB_USER:-admin}
+      DB_PASSWORD: ${PAYMENT_DB_PASSWORD:-paymentchangeme}
+    depends_on:
+      payment-db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  task-service:
+    build: ./services/task-service
+    ports:
+      - "${TASK_SERVICE_PORT:-5005}:5000"
+    environment:
+      SERVER_PORT: 5000
+    networks:
+      - app-network
+
+  menu-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: menu_db
+      MYSQL_USER: ${DB_USER:-admin}
+      MYSQL_PASSWORD: ${MENU_DB_PASSWORD:-menuchangeme}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootchangeme}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - menu-db-data:/var/lib/mysql
+    networks:
+      - app-network
+
+  cart-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: cart_db
+      MYSQL_USER: ${DB_USER:-admin}
+      MYSQL_PASSWORD: ${CART_DB_PASSWORD:-cartchangeme}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootchangeme}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - cart-db-data:/var/lib/mysql
+    networks:
+      - app-network
+
+  order-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: order_db
+      MYSQL_USER: ${DB_USER:-admin}
+      MYSQL_PASSWORD: ${ORDER_DB_PASSWORD:-orderchangeme}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootchangeme}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - order-db-data:/var/lib/mysql
+    networks:
+      - app-network
+
+  payment-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: payment_db
+      MYSQL_USER: ${DB_USER:-admin}
+      MYSQL_PASSWORD: ${PAYMENT_DB_PASSWORD:-paymentchangeme}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootchangeme}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - payment-db-data:/var/lib/mysql
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  menu-db-data:
+  cart-db-data:
+  order-db-data:
+  payment-db-data:
