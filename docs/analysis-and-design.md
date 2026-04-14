@@ -218,25 +218,25 @@ Service Contract specification for each service. Full OpenAPI specs:
 
 ### 3.2 Service Logic Design
 
-Internal processing flow for each service.
+Luồng xử lý nội bộ cho từng service.
 
 **Task Service (Checkout Saga):**
 
 ```mermaid
 flowchart TD
-    A[Receive checkout request] --> B[Fetch cart items]
-    B --> C[Extract itemIds from cart]
-    C --> D[Call POST /menu/validate]
-    D --> E{Items valid?}
-    E -->|Invalid or missing| F[Return 400 Error]
-    E -->|Valid| G[Create order in Order Service]
-    G --> H[Process payment in Payment Service]
-    H --> I{Payment result}
-    I -->|SUCCESS| J[Update order status to PAID]
-    I -->|FAILED| K[Update order status to PAYMENT_FAILED]
-    J --> L[Clear cart]
+    A[Nhận yêu cầu checkout] --> B[Lấy dữ liệu giỏ hàng]
+    B --> C[Trích xuất itemIds từ giỏ]
+    C --> D[Gọi POST /menu/validate]
+    D --> E{Món ăn hợp lệ?}
+    E -->|Không hợp lệ hoặc thiếu| F[Trả lỗi 400]
+    E -->|Hợp lệ| G[Tạo đơn trong Order Service]
+    G --> H[Xử lý thanh toán qua Payment Service]
+    H --> I{Kết quả thanh toán}
+    I -->|SUCCESS| J[Cập nhật trạng thái đơn thành PAID]
+    I -->|FAILED| K[Cập nhật trạng thái đơn thành PAYMENT_FAILED]
+    J --> L[Xóa giỏ hàng]
     K --> L
-    L --> M[Return saga result]
+    L --> M[Trả về kết quả saga]
 ```
 
 **Validation Step Detail (using POST /menu/validate):**
@@ -250,74 +250,74 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Receive request] --> B{Endpoint}
-    B -->|GET /menu/items| C[Query all menu items]
-    C --> D{Items empty?}
-    D -->|Yes| E[Return 400 Not found items]
-    D -->|No| F[Return 200 with items]
+    A[Nhận request] --> B{Endpoint}
+    B -->|GET /menu/items| C[Truy vấn toàn bộ món ăn]
+    C --> D{Danh sách rỗng?}
+    D -->|Có| E[Trả 400 Not found items]
+    D -->|Không| F[Trả 200 với danh sách món]
 
-    B -->|POST /menu/validate| G[Read itemIds from request]
-    G --> H{itemIds is array?}
-    H -->|No| I[Return 400 itemIds must be an array]
-    H -->|Yes| J[Query menu by itemIds]
-    J --> K{Any invalidIds?}
-    K -->|Yes| L[Return 400 with invalidIds]
-    K -->|No| M[Return 200 valid=true and items]
+    B -->|POST /menu/validate| G[Đọc itemIds từ request]
+    G --> H{itemIds có phải mảng?}
+    H -->|Không| I[Trả 400 itemIds must be an array]
+    H -->|Có| J[Truy vấn menu theo itemIds]
+    J --> K{Có invalidIds không?}
+    K -->|Có| L[Trả 400 kèm invalidIds]
+    K -->|Không| M[Trả 200 valid=true và items]
 ```
 
 **Cart Service:**
 
 ```mermaid
 flowchart TD
-    A[Receive request] --> B{Endpoint}
-    B -->|POST /cart/items| C[Validate payload and save item]
-    C --> D[Return 200 Item added]
+    A[Nhận request] --> B{Endpoint}
+    B -->|POST /cart/items| C[Validate payload và lưu item]
+    C --> D[Trả 200 Item added]
 
-    B -->|GET /cart| E[Query all cart items]
-    E --> F[Calculate total = sum price x quantity]
-    F --> G[Return 200 items and total]
+    B -->|GET /cart| E[Truy vấn toàn bộ item trong giỏ]
+    E --> F[Tính total = tổng price x quantity]
+    F --> G[Trả 200 items và total]
 
-    B -->|PUT /cart/items/:itemId| H[Find item by id]
-    H --> I{Item exists?}
-    I -->|No| J[Return error Item not found in cart]
-    I -->|Yes| K[Update quantity and save]
-    K --> L[Return 200 Item quantity updated]
+    B -->|PUT /cart/items/:itemId| H[Tìm item theo id]
+    H --> I{Item tồn tại?}
+    I -->|Không| J[Trả lỗi Item not found in cart]
+    I -->|Có| K[Cập nhật quantity và lưu]
+    K --> L[Trả 200 Item quantity updated]
 
-    B -->|DELETE /cart/items/:itemId| M[Check item exists]
-    M --> N{Item exists?}
-    N -->|No| O[Return error Item not found in cart]
-    N -->|Yes| P[Delete item]
-    P --> Q[Return 200 Item removed]
+    B -->|DELETE /cart/items/:itemId| M[Kiểm tra item tồn tại]
+    M --> N{Item tồn tại?}
+    N -->|Không| O[Trả lỗi Item not found in cart]
+    N -->|Có| P[Xóa item]
+    P --> Q[Trả 200 Item removed]
 
-    B -->|DELETE /cart/clear| R[Delete all cart items]
-    R --> S[Return 200 Cart cleared]
+    B -->|DELETE /cart/clear| R[Xóa toàn bộ giỏ hàng]
+    R --> S[Trả 200 Cart cleared]
 ```
 
 **Order Service:**
 
 ```mermaid
 flowchart TD
-    A[Receive request] --> B{Endpoint}
-    B -->|POST /orders| C[Generate orderId]
-    C --> D[Serialize items to JSON]
-    D --> E{Serialization success?}
-    E -->|No| F[Return error Invalid input data]
-    E -->|Yes| G[Save order with CREATED status]
-    G --> H[Return 201 orderId and CREATED]
+    A[Nhận request] --> B{Endpoint}
+    B -->|POST /orders| C[Sinh orderId]
+    C --> D[Serialize items sang JSON]
+    D --> E{Serialize thành công?}
+    E -->|Không| F[Trả lỗi Invalid input data]
+    E -->|Có| G[Lưu order với trạng thái CREATED]
+    G --> H[Trả 201 orderId và CREATED]
 
-    B -->|PUT /orders/:orderId/status| I[Find order by orderId]
-    I --> J{Order exists?}
-    J -->|No| K[Return error Order not found]
-    J -->|Yes| L[Update status and save]
-    L --> M[Return 200 orderId and new status]
+    B -->|PUT /orders/:orderId/status| I[Tìm order theo orderId]
+    I --> J{Order tồn tại?}
+    J -->|Không| K[Trả lỗi Order not found]
+    J -->|Có| L[Cập nhật status và lưu]
+    L --> M[Trả 200 orderId và trạng thái mới]
 ```
 
 **Payment Service:**
 
 ```mermaid
 flowchart TD
-    A[Receive POST /payments] --> B[Validate payment request]
-    B --> C[Generate random status SUCCESS or FAILED]
-    C --> D[Save payment record with timestamp]
-    D --> E[Return 200 with payment status]
+    A[Nhận POST /payments] --> B[Validate request thanh toán]
+    B --> C[Sinh ngẫu nhiên trạng thái SUCCESS hoặc FAILED]
+    C --> D[Lưu bản ghi thanh toán kèm timestamp]
+    D --> E[Trả 200 với trạng thái thanh toán]
 ```
