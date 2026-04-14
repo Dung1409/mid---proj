@@ -105,7 +105,7 @@ Map entities/processes to REST URI Resources.
 
 | Entity / Process | Resource URI                                   |
 | ---------------- | ---------------------------------------------- |
-| Menu             | `/menu/items`                                  |
+| Menu             | `/menu/items`,`/menu/validate`                 |
 | Cart             | `/cart`, `/cart/items`, `/cart/items/{itemId}` |
 | Order            | `/orders`, `/orders/{orderId}/status`          |
 | Payment          | `/payments`                                    |
@@ -277,13 +277,13 @@ flowchart TD
     E --> F[Calculate total = sum price x quantity]
     F --> G[Return 200 items and total]
 
-    B -->|PUT /cart/items/{itemId}| H[Find item by id]
+    B -->|PUT /cart/items/:itemId| H[Find item by id]
     H --> I{Item exists?}
     I -->|No| J[Return error Item not found in cart]
     I -->|Yes| K[Update quantity and save]
     K --> L[Return 200 Item quantity updated]
 
-    B -->|DELETE /cart/items/{itemId}| M[Check item exists]
+    B -->|DELETE /cart/items/:itemId| M[Check item exists]
     M --> N{Item exists?}
     N -->|No| O[Return error Item not found in cart]
     N -->|Yes| P[Delete item]
@@ -305,7 +305,7 @@ flowchart TD
     E -->|Yes| G[Save order with CREATED status]
     G --> H[Return 201 orderId and CREATED]
 
-    B -->|PUT /orders/{orderId}/status| I[Find order by orderId]
+    B -->|PUT /orders/:orderId/status| I[Find order by orderId]
     I --> J{Order exists?}
     J -->|No| K[Return error Order not found]
     J -->|Yes| L[Update status and save]
