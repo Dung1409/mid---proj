@@ -26,7 +26,7 @@ paths:
   /menu/items:
     get:
       summary: Get menu items
-      description: Tra ve danh sach mon an trong menu.
+      description: Return list of all available menu items.
       responses:
         "200":
           description: Success
@@ -58,8 +58,70 @@ paths:
               schema:
                 type: object
                 properties:
-                  erroe:
+                  error:
                     type: string
                     example: Not found items
                 required:
                   - error
+
+  /menu/validate:
+    post:
+      summary: Validate menu items
+      description: Validate item IDs against current menu. Called by Task Service during checkout orchestration to ensure cart items are still available.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                itemIds:
+                  type: array
+                  items:
+                    type: integer
+                  example: [1, 2, 3]
+              required:
+                - itemIds
+      responses:
+        "200":
+          description: All items are valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    example: true
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        price:
+                          type: integer
+                required:
+                  - valid
+                  - items
+        "400":
+          description: Invalid item IDs found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Invalid items
+                  invalidIds:
+                    type: array
+                    items:
+                      type: integer
+                    example: [99, 100]
+                required:
+                  - error
+                  - invalidIds

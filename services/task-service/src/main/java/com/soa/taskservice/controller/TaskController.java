@@ -6,6 +6,7 @@ import com.soa.taskservice.dto.TaskStatusResponse;
 import com.soa.taskservice.exception.RequestNotFoundException;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,11 +38,22 @@ public class TaskController {
     @Value("${payment.service.base-url}")
     private String paymentServiceBaseUrl;
 
-    @PostMapping("/order")
+    @Value("${cart.service.base-url}")
+    private String cartServiceBaseUrl;
+
+    @Value("${menu.service.base-url}")
+    private String menuServiceBaseUrl;
+
+    @PostMapping("/checkout")
     public ResponseEntity<TaskOrderResponse> submitOrder(@Valid @RequestBody TaskOrderRequest request) {
-        BigDecimal totalPrice = request.getItems()
+        List<Map<String, Object>> orderItems = fetchCheckoutItemsFromCart();
+
+        // Validate items with menu service
+        validateItemsWithMenu(orderItems);
+
+        BigDecimal totalPrice = orderItems
                 .stream()
-                .map(item -> item.getPrice())
+                .map(item -> new BigDecimal(String.valueOf(item.get("price"))))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (totalPrice.compareTo(BigDecimal.ZERO) <= 0) {
@@ -55,7 +67,7 @@ public class TaskController {
                 "ORDER_SUBMITTED",
                 "Order is being processed"));
 
-        String orderId = createOrder(request, totalPrice);
+        String orderId = createOrder(orderItems, totalPrice);
         requestStatusStore.put(requestId, new TaskStatusResponse(
                 requestId,
                 orderId,
@@ -75,11 +87,15 @@ public class TaskController {
         }
 
         updateOrderStatus(orderId, "PAID");
+        boolean cartCleared = clearCart();
+        String paidMessage = cartCleared
+                ? "Order paid successfully"
+                : "Order paid successfully but cart clear failed";
         requestStatusStore.put(requestId, new TaskStatusResponse(
                 requestId,
                 orderId,
                 "PAID",
-                "Order paid successfully"));
+                paidMessage));
 
         TaskOrderResponse response = new TaskOrderResponse(
                 requestId,
@@ -98,9 +114,43 @@ public class TaskController {
         return ResponseEntity.ok(status);
     }
 
-    private String createOrder(TaskOrderRequest request, BigDecimal totalPrice) {
+    private void validateItemsWithMenu(List<Map<String, Object>> orderItems) {
+        List<Integer> itemIds = new ArrayList<>();
+        for (Map<String, Object> item : orderItems) {
+            Object idObj = item.get("id");
+            if (idObj != null) {
+                itemIds.add(Integer.parseInt(String.valueOf(idObj)));
+            }
+        }
+
+        if (itemIds.isEmpty()) {
+            throw new IllegalArgumentException("Invalid input data");
+        }
+
         Map<String, Object> payload = new HashMap<>();
-        payload.put("items", mapItems(request));
+        payload.put("itemIds", itemIds);
+
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                menuServiceBaseUrl + "/menu/validate",
+                HttpMethod.POST,
+                new HttpEntity<>(payload),
+                new ParameterizedTypeReference<>() {
+                });
+
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            throw new IllegalArgumentException("Invalid input data");
+        }
+
+        Object validObj = response.getBody().get("valid");
+        if (!"true".equals(String.valueOf(validObj)) && !(boolean) validObj) {
+            Object errorObj = response.getBody().get("error");
+            throw new IllegalArgumentException(String.valueOf(errorObj));
+        }
+    }
+
+    private String createOrder(List<Map<String, Object>> orderItems, BigDecimal totalPrice) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("items", orderItems);
         payload.put("total", totalPrice);
 
         ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
@@ -157,13 +207,66 @@ public class TaskController {
                 });
     }
 
-    private List<Map<String, Object>> mapItems(TaskOrderRequest request) {
-        return request.getItems().stream().map(item -> {
+    private List<Map<String, Object>> fetchCheckoutItemsFromCart() {
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                cartServiceBaseUrl + "/cart",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {
+                });
+
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            throw new IllegalArgumentException("Invalid input data");
+        }
+
+        Object itemsObj = response.getBody().get("items");
+        if (!(itemsObj instanceof List<?> rawItems) || rawItems.isEmpty()) {
+            throw new IllegalArgumentException("Invalid input data");
+        }
+
+        List<Map<String, Object>> mappedItems = new ArrayList<>();
+        for (Object rawItem : rawItems) {
+            if (!(rawItem instanceof Map<?, ?> item)) {
+                throw new IllegalArgumentException("Invalid input data");
+            }
+
+            Object id = item.get("itemId");
+            Object name = item.get("name");
+            Object price = item.get("price");
+            Object quantity = item.get("quantity");
+
+            if (id == null || name == null || price == null || quantity == null) {
+                throw new IllegalArgumentException("Invalid input data");
+            }
+
+            BigDecimal unitPrice = new BigDecimal(String.valueOf(price));
+            int qty = Integer.parseInt(String.valueOf(quantity));
+
             Map<String, Object> mapped = new HashMap<>();
-            mapped.put("id", item.getId());
-            mapped.put("name", item.getName());
-            mapped.put("price", item.getPrice());
-            return mapped;
-        }).toList();
+            mapped.put("id", id);
+            mapped.put("name", String.valueOf(name));
+            mapped.put("price", unitPrice.multiply(BigDecimal.valueOf(qty)));
+            mappedItems.add(mapped);
+        }
+
+        if (mappedItems.isEmpty()) {
+            throw new IllegalArgumentException("Invalid input data");
+        }
+
+        return mappedItems;
+    }
+
+    private boolean clearCart() {
+        try {
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    cartServiceBaseUrl + "/cart/clear",
+                    HttpMethod.DELETE,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    });
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (RuntimeException ex) {
+            return false;
+        }
     }
 }

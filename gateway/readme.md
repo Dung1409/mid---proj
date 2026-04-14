@@ -1,27 +1,23 @@
 # API Gateway
 
-## Overview
+API Gateway là điểm vào duy nhất cho toàn bộ request từ frontend hoặc client bên ngoài. Gateway dùng Nginx để định tuyến request đến đúng microservice phía sau.
 
-The API Gateway serves as the single entry point for all client requests. It routes incoming requests to the appropriate backend microservice.
+## Vai trò
 
-## Responsibilities
+- Định tuyến request đến đúng service
+- Xử lý CORS cho frontend chạy local
+- Chuyển tiếp path `/api/*` sang các backend service tương ứng
+- Cung cấp endpoint health riêng cho gateway
 
-- **Request routing**: Forward requests to the correct service
-- **Load balancing**: Distribute traffic (if applicable)
-- **Authentication**: Validate tokens/credentials (optional)
-- **Rate limiting**: Protect services from overload (optional)
-- **CORS handling**: Allow frontend cross-origin requests
-- **Request/Response transformation**: Modify headers, paths as needed
+## Công nghệ
 
-## Tech Stack
+| Thành phần | Lựa chọn |
+| ---------- | -------- |
+| Gateway    | Nginx    |
 
-| Component | Choice |
-| --------- | ------ |
-| Approach  | Nginx  |
+## Bảng định tuyến
 
-## Routing Table
-
-| External Path    | Target Service  | Internal URL                    |
+| External path    | Service đích    | Internal URL                    |
 | ---------------- | --------------- | ------------------------------- |
 | `/api/menu/*`    | Menu Service    | `http://menu-service:5000/*`    |
 | `/api/cart/*`    | Cart Service    | `http://cart-service:5000/*`    |
@@ -29,26 +25,39 @@ The API Gateway serves as the single entry point for all client requests. It rou
 | `/api/payment/*` | Payment Service | `http://payment-service:5000/*` |
 | `/api/task/*`    | Task Service    | `http://task-service:5000/*`    |
 
-## Running
+Các path không có dấu `/` cuối như `/api/menu` sẽ được chuyển hướng sang `/api/menu/`.
+
+## Cấu hình chạy
+
+Gateway lắng nghe bên trong container ở port `8000`. Trong [docker-compose.yml](../docker-compose.yml), port này được map ra host là `8080`.
+
+## Chạy local
+
+Từ thư mục gốc project:
 
 ```bash
-# From project root
-docker compose up gateway --build
+docker compose up --build gateway
 ```
 
-## Health Check
+Nếu muốn chạy cùng toàn bộ hệ thống:
+
+```bash
+docker compose up --build
+```
+
+## Health check
 
 ```bash
 curl http://localhost:8080/health
 ```
 
-Expected response:
+Response:
 
 ```json
 { "status": "ok" }
 ```
 
-## Route Test
+## Kiểm tra route
 
 ```bash
 curl http://localhost:8080/api/menu/health
@@ -58,12 +67,17 @@ curl http://localhost:8080/api/payment/health
 curl http://localhost:8080/api/task/health
 ```
 
-## Configuration
+## CORS
 
-The gateway uses Docker Compose networking. Services are accessible by their
-service names defined in `docker-compose.yml`.
+Gateway bật CORS cơ bản để phục vụ frontend local development:
 
-## Notes
+- `Access-Control-Allow-Origin: *`
+- `Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS`
+- `Access-Control-Allow-Headers: Authorization, Content-Type, X-Requested-With`
 
-- Use service names (not `localhost`) for upstream URLs inside Docker
-- The gateway exposes port 8080 to the host
+Request `OPTIONS` sẽ được trả về `204` trực tiếp.
+
+## Ghi chú
+
+- Gateway chỉ dùng Docker Compose DNS để gọi service nội bộ, không dùng `localhost`.
+- API health của gateway được expose tại `GET /health`.

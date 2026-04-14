@@ -22,10 +22,10 @@ paths:
                     example: ok
                 required:
                   - status
-  /task/order:
+  /task/checkout:
     post:
       summary: Submit order request
-      description: Create a new order from selected items and customer info, then initiate saga workflow.
+      description: Initiate checkout saga with customer info. Task Service reads cart data, creates order, processes payment, and updates order status.
       requestBody:
         required: true
         content:
@@ -37,27 +37,9 @@ paths:
                   type: string
                 address:
                   type: string
-                items:
-                  type: array
-                  minItems: 1
-                  items:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      name:
-                        type: string
-                      price:
-                        type: number
-                        format: double
-                    required:
-                      - id
-                      - name
-                      - price
               required:
                 - phone
                 - address
-                - items
       responses:
         "202":
           description: Order accepted for asynchronous processing

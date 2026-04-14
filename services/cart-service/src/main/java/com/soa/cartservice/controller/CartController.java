@@ -93,29 +93,21 @@ public class CartController {
         return ResponseEntity.ok(new MessageResponse("Item removed"));
     }
 
+    @DeleteMapping("/clear")
+    public ResponseEntity<MessageResponse> clearCart() {
+        cartItemRepository.deleteAll();
+        return ResponseEntity.ok(new MessageResponse("Cart cleared"));
+    }
+
     @PostMapping("/checkout")
     public ResponseEntity<CheckoutResponse> checkout(@Valid @RequestBody CheckoutRequest request) {
-        List<CartItem> persistedItems = cartItemRepository.findAll();
-        if (persistedItems.isEmpty()) {
-            throw new IllegalArgumentException("Cart is empty");
-        }
-
-        List<Map<String, Object>> sagaItems = persistedItems.stream().map(item -> {
-            Map<String, Object> sagaItem = new HashMap<>();
-            sagaItem.put("id", item.getItemId());
-            sagaItem.put("name", item.getName());
-            sagaItem.put("price", item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
-            return sagaItem;
-        }).collect(Collectors.toList());
-
         Map<String, Object> payload = new HashMap<>();
         payload.put("phone", request.getPhone());
         payload.put("address", request.getAddress());
-        payload.put("items", sagaItems);
 
         try {
             ResponseEntity<Map<String, Object>> taskResponse = restTemplate.exchange(
-                    taskServiceBaseUrl + "/task/order",
+                    taskServiceBaseUrl + "/task/checkout",
                     HttpMethod.POST,
                     new HttpEntity<>(payload),
                     new ParameterizedTypeReference<>() {
@@ -133,7 +125,6 @@ public class CartController {
             Object requestIdObj = taskResponse.getBody().get("requestId");
             String requestId = requestIdObj == null ? "" : String.valueOf(requestIdObj);
 
-            cartItemRepository.deleteAll();
             return ResponseEntity.status(HttpStatus.ACCEPTED)
                     .body(new CheckoutResponse(requestId, "Order is being processed"));
         } catch (RestClientException ex) {

@@ -97,8 +97,14 @@ services:
     build: ./services/task-service
     ports:
       - "${TASK_SERVICE_PORT:-5005}:5000"
+    env_file:
+      - .env
     environment:
       SERVER_PORT: 5000
+      ORDER_SERVICE_URL: ${ORDER_SERVICE_URL:-http://order-service:5000}
+      PAYMENT_SERVICE_URL: ${PAYMENT_SERVICE_URL:-http://payment-service:5000}
+      CART_SERVICE_URL: ${CART_SERVICE_URL:-http://cart-service:5000}
+      MENU_SERVICE_URL: ${MENU_SERVICE_URL:-http://menu-service:5000}
     networks:
       - app-network
 

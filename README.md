@@ -1,10 +1,10 @@
-# Food Ordering SOA Demo
+# Project Name
 
 [![Stars](https://img.shields.io/github/stars/hungdn1701/microservices-assignment-starter?style=social)](https://github.com/hungdn1701/microservices-assignment-starter/stargazers)
 [![Forks](https://img.shields.io/github/forks/hungdn1701/microservices-assignment-starter?style=social)](https://github.com/hungdn1701/microservices-assignment-starter/network/members)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> Service-oriented food ordering demo using Spring Boot microservices, Nginx API gateway, and MySQL (database per service).
+> Demo tự động hóa quy trình đặt món ăn theo kiến trúc hướng dịch vụ, sử dụng Spring Boot microservices, Nginx API gateway và MySQL (database per service).
 
 > **New to this repo?** See [`GETTING_STARTED.md`](GETTING_STARTED.md) for setup instructions and workflow guide.
 
@@ -22,27 +22,14 @@
 
 ## Business Process
 
-Domain: food ordering and checkout.
+Đặt món ăn và thanh toán theo 2 luồng chính:
 
-Actors:
+- Luồng nhanh: chọn món -> tạo đơn -> thanh toán ngay.
+- Luồng giỏ hàng: chọn món -> thêm vào giỏ -> cập nhật số lượng -> checkout -> thanh toán.
 
-- End user (web frontend)
-- API gateway
-- Domain services (menu, cart, order, payment)
-- Task service (orchestrator)
+Tác nhân: người dùng, frontend, API gateway, các domain service (menu/cart/order/payment) và task service (orchestrator).
 
-Supported flows:
-
-1. Quick flow: select item -> create order -> pay immediately.
-2. Cart flow: select item -> add to cart -> update quantity -> checkout -> payment.
-
-Checkout orchestration uses synchronous REST Saga in Task Service:
-
-- Create order in Order Service.
-- Process payment in Payment Service.
-- Update order status (`PAID` or `PAYMENT_FAILED`) in Order Service.
-
-Each service exposes `GET /health` and returns `{"status":"ok"}`.
+Phạm vi: từ lúc chọn món đến khi đơn được cập nhật trạng thái thanh toán.
 
 ---
 
@@ -59,15 +46,15 @@ graph LR
     GW --> TASK[Task Service :5005]
 ```
 
-| Component           | Responsibility                              | Tech Stack                | Port |
-| ------------------- | ------------------------------------------- | ------------------------- | ---- |
-| **Frontend**        | Render menu/cart/checkout UI                | Nginx + HTML/CSS/JS       | 3000 |
-| **Gateway**         | Route `/api/*` to backend services          | Nginx                     | 8080 |
-| **Menu Service**    | Provide menu item catalog                   | Spring Boot + JPA + MySQL | 5001 |
-| **Cart Service**    | Manage cart items and checkout request      | Spring Boot + JPA + MySQL | 5002 |
-| **Order Service**   | Create orders and update order status       | Spring Boot + JPA + MySQL | 5003 |
-| **Payment Service** | Process payment and persist result          | Spring Boot + JPA + MySQL | 5004 |
-| **Task Service**    | Orchestrate checkout Saga and status lookup | Spring Boot               | 5005 |
+| Component           | Responsibility                                  | Tech Stack                | Port |
+| ------------------- | ----------------------------------------------- | ------------------------- | ---- |
+| **Frontend**        | Hiển thị giao diện menu/giỏ hàng/checkout       | Nginx + HTML/CSS/JS       | 3000 |
+| **Gateway**         | Định tuyến các API `/api/*` đến backend service | Nginx                     | 8080 |
+| **Menu Service**    | Cung cấp danh sách món                          | Spring Boot + JPA + MySQL | 5001 |
+| **Cart Service**    | Quản lý giỏ hàng và xử lý checkout request      | Spring Boot + JPA + MySQL | 5002 |
+| **Order Service**   | Tạo đơn và cập nhật trạng thái đơn              | Spring Boot + JPA + MySQL | 5003 |
+| **Payment Service** | Xử lý thanh toán và lưu kết quả                 | Spring Boot + JPA + MySQL | 5004 |
+| **Task Service**    | Điều phối Saga checkout và tra cứu trạng thái   | Spring Boot               | 5005 |
 
 > Full documentation: [`docs/architecture.md`](docs/architecture.md) · [`docs/analysis-and-design.md`](docs/analysis-and-design.md)
 
@@ -88,22 +75,13 @@ docker compose up --build
 ### Verify
 
 ```bash
-curl http://localhost:8080/health
-curl http://localhost:5001/health
-curl http://localhost:5002/health
-curl http://localhost:5003/health
-curl http://localhost:5004/health
-curl http://localhost:5005/health
+curl http://localhost:8080/health   # Gateway
+curl http://localhost:5001/health   # Menu Service
+curl http://localhost:5002/health   # Cart Service
+curl http://localhost:5003/health   # Order Service
+curl http://localhost:5004/health   # Payment Service
+curl http://localhost:5005/health   # Task Service
 ```
-
-Gateway API checks:
-
-```bash
-curl http://localhost:8080/api/menu/menu/items
-curl http://localhost:8080/api/cart/cart
-```
-
-Open frontend: `http://localhost:3000`
 
 ---
 
@@ -114,11 +92,6 @@ Open frontend: `http://localhost:3000`
 - [Order Service — OpenAPI Spec](docs/api-specs/order-service.yaml)
 - [Payment Service — OpenAPI Spec](docs/api-specs/payment-service.yaml)
 - [Task Service — OpenAPI Spec](docs/api-specs/task-service.yaml)
-
-Detailed design docs:
-
-- [Analysis and Design](docs/analysis-and-design.md)
-- [Architecture](docs/architecture.md)
 
 ---
 

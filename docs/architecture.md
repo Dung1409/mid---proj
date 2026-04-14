@@ -1,84 +1,112 @@
 # Architecture Design
 
+> This document captures architecture decisions for the selected process automation solution.
+
+---
+
 ## 1. Pattern Selection
+
+Select relevant architecture patterns and explain why they are used.
 
 | Pattern                 | Selected? | Rationale                                                                         |
 | ----------------------- | --------- | --------------------------------------------------------------------------------- |
-| API Gateway             | Yes       | Single public endpoint and centralized routing/CORS                               |
-| Database per Service    | Yes       | Keeps service ownership clear and reduces schema coupling                         |
-| Saga / Process Manager  | Yes       | Task Service coordinates order and payment without distributed transactions       |
-| Event-Driven Messaging  | No        | Assignment scope uses synchronous REST orchestration                              |
-| Circuit Breaker / Retry | Partial   | Basic timeout/error handling at call sites; no dedicated resilience framework yet |
+| API Gateway             | Yes       | Cung cấp điểm vào duy nhất cho client, đơn giản hóa routing và CORS               |
+| Database per Service    | Yes       | Mỗi service sở hữu dữ liệu riêng, giảm coupling schema                            |
+| Saga / Process Manager  | Yes       | Task Service điều phối checkout mà không cần distributed transaction              |
+| Event-Driven Messaging  | No        | Scope hiện tại sử dụng orchestration REST đồng bộ để dễ demo                      |
+| Circuit Breaker / Retry | Partial   | Có xử lý lỗi cơ bản ở service call, chưa sử dụng framework resilience chuyên biệt |
 
-## 2. Components and Responsibilities
+---
 
-| Component       | Responsibility                                       | Technology                 |
-| --------------- | ---------------------------------------------------- | -------------------------- |
-| Frontend        | Display menu/cart and trigger checkout flow          | Nginx static + HTML/CSS/JS |
-| Gateway         | Reverse proxy for all APIs under `/api/*`            | Nginx                      |
-| Menu Service    | Manage and expose available menu items               | Spring Boot + JPA          |
-| Cart Service    | Manage cart items and call Task Service for checkout | Spring Boot + JPA          |
-| Order Service   | Create order and update order status                 | Spring Boot + JPA          |
-| Payment Service | Process payment and persist payment result           | Spring Boot + JPA          |
-| Task Service    | Orchestrate Saga for checkout and status tracking    | Spring Boot                |
-| MySQL (menu)    | Menu Service data store                              | MySQL 8.4                  |
-| MySQL (cart)    | Cart Service data store                              | MySQL 8.4                  |
-| MySQL (order)   | Order Service data store                             | MySQL 8.4                  |
-| MySQL (payment) | Payment Service data store                           | MySQL 8.4                  |
+## 2. Components & Responsibilities
+
+List logical components in your system.
+
+| Component       | Responsibility                                                 | Technology                 |
+| --------------- | -------------------------------------------------------------- | -------------------------- |
+| Frontend        | Hiển thị menu, giỏ hàng, checkout và trạng thái xử lý          | Nginx static + HTML/CSS/JS |
+| Gateway         | Định tuyến `/api/*` đến các backend service                    | Nginx                      |
+| Menu Service    | Quản lý và cung cấp dữ liệu món ăn                             | Spring Boot + JPA          |
+| Cart Service    | Quản lý giỏ hàng và gửi yêu cầu checkout                       | Spring Boot + JPA          |
+| Order Service   | Tạo đơn và cập nhật trạng thái đơn                             | Spring Boot + JPA          |
+| Payment Service | Xử lý thanh toán và lưu kết quả                                | Spring Boot + JPA          |
+| Task Service    | Điều phối Saga checkout và tra cứu trạng thái theo `requestId` | Spring Boot                |
+| Menu DB         | Lưu dữ liệu menu                                               | MySQL 8.4                  |
+| Cart DB         | Lưu dữ liệu giỏ hàng                                           | MySQL 8.4                  |
+| Order DB        | Lưu dữ liệu đơn hàng                                           | MySQL 8.4                  |
+| Payment DB      | Lưu dữ liệu thanh toán                                         | MySQL 8.4                  |
+
+---
 
 ## 3. Communication Matrix
 
-| From           | To              | Protocol | Purpose                              |
-| -------------- | --------------- | -------- | ------------------------------------ |
-| Frontend       | Gateway         | HTTP     | Access all APIs through one endpoint |
-| Gateway        | Menu Service    | HTTP     | Proxy `/api/menu/*`                  |
-| Gateway        | Cart Service    | HTTP     | Proxy `/api/cart/*`                  |
-| Gateway        | Order Service   | HTTP     | Proxy `/api/order/*`                 |
-| Gateway        | Payment Service | HTTP     | Proxy `/api/payment/*`               |
-| Gateway        | Task Service    | HTTP     | Proxy `/api/task/*`                  |
-| Cart Service   | Task Service    | HTTP     | Submit checkout saga request         |
-| Task Service   | Order Service   | HTTP     | Create and update orders             |
-| Task Service   | Payment Service | HTTP     | Process payment                      |
-| Domain Service | Own MySQL       | JDBC     | Persist domain data                  |
+How services interact.
+
+| From           | To              | Protocol | Purpose                                 |
+| -------------- | --------------- | -------- | --------------------------------------- |
+| Frontend       | Gateway         | HTTP     | Gọi API thông qua một endpoint duy nhất |
+| Gateway        | Menu Service    | HTTP     | Proxy `/api/menu/*`                     |
+| Gateway        | Cart Service    | HTTP     | Proxy `/api/cart/*`                     |
+| Gateway        | Order Service   | HTTP     | Proxy `/api/order/*`                    |
+| Gateway        | Payment Service | HTTP     | Proxy `/api/payment/*`                  |
+| Gateway        | Task Service    | HTTP     | Proxy `/api/task/*`                     |
+| Cart Service   | Task Service    | HTTP     | Gửi checkout payload để khởi tạo saga   |
+| Task Service   | Order Service   | HTTP     | Tạo đơn và cập nhật trạng thái đơn      |
+| Task Service   | Payment Service | HTTP     | Xử lý thanh toán                        |
+| Domain Service | Own DB          | JDBC     | Đọc/ghi dữ liệu theo từng service       |
+
+---
 
 ## 4. High-level Architecture Diagram
 
 ```mermaid
 flowchart LR
-    User[User Browser] --> FE[Frontend :3000]
-    FE --> GW[Gateway :8080]
+    Client --> Gateway
+    Gateway --> Frontend
+    Gateway --> MenuService
+    Gateway --> CartService
+    Gateway --> OrderService
+    Gateway --> PaymentService
+    Gateway --> TaskService
 
-    GW --> MENU[Menu Service :5001]
-    GW --> CART[Cart Service :5002]
-    GW --> ORDER[Order Service :5003]
-    GW --> PAY[Payment Service :5004]
-    GW --> TASK[Task Service :5005]
+    MenuService --> MenuDB[(menu-db)]
+    CartService --> CartDB[(cart-db)]
+    OrderService --> OrderDB[(order-db)]
+    PaymentService --> PaymentDB[(payment-db)]
 
-    CART --> TASK
-    TASK --> ORDER
-    TASK --> PAY
-
-    MENU --> DB1[(menu-db)]
-    CART --> DB2[(cart-db)]
-    ORDER --> DB3[(order-db)]
-    PAY --> DB4[(payment-db)]
+    CartService --> TaskService
+    TaskService --> OrderService
+    TaskService --> PaymentService
 ```
+
+---
 
 ## 5. Deployment View (Docker Compose)
 
-Runtime topology:
+Describe runtime topology.
 
-- Application containers: `frontend`, `gateway`, `menu-service`, `cart-service`, `order-service`, `payment-service`, `task-service`
-- Database containers: `menu-db`, `cart-db`, `order-db`, `payment-db`
-- Networking: default Docker Compose network with service-name DNS
-- Startup control: `depends_on` + DB health checks to ensure services wait for database readiness
-- Configuration: environment variables in compose and `.env.example`
+- Containers:
+  - frontend
+  - gateway
+  - menu-service
+  - cart-service
+  - order-service
+  - payment-service
+  - task-service
+  - menu-db
+  - cart-db
+  - order-db
+  - payment-db
+- Network: default compose network (`app-network`)
+- Environment variables: configured in `.env` and `docker-compose.yml`
+
+---
 
 ## 6. Risks and Trade-offs
 
-| Decision                  | Benefit                                         | Trade-off                                         |
-| ------------------------- | ----------------------------------------------- | ------------------------------------------------- |
-| Synchronous REST Saga     | Easy to understand and demo                     | Coupling to service availability and latency      |
-| Separate DB per service   | Strong ownership boundary                       | More operational overhead (multiple DB instances) |
-| Randomized payment result | Demonstrates both success/failure paths quickly | Not production-realistic behavior                 |
-| Nginx gateway             | Lightweight and simple routing                  | No built-in service discovery or policy engine    |
+| Decision                | Benefit                                   | Trade-off                                               |
+| ----------------------- | ----------------------------------------- | ------------------------------------------------------- |
+| REST Saga orchestration | Dễ hiểu, dễ debug, phù hợp bài demo       | Độ phụ thuộc availability giữa các service tăng         |
+| Database per Service    | Ràng buộc ownership rõ ràng, dễ mở rộng   | Vận hành nhiều DB tăng độ phức tạp                      |
+| Nginx Gateway           | Nhẹ, cấu hình đơn giản, dễ triển khai     | Không có service discovery/rate limit nâng cao mặc định |
+| Random payment outcome  | Demo được cả nhánh thành công và thất bại | Không phản ánh hành vi thanh toán thực tế               |

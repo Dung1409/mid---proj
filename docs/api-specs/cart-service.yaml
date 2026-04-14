@@ -98,6 +98,23 @@ paths:
                 required:
                   - items
                   - total
+  /cart/clear:
+    delete:
+      summary: Clear all cart items
+      description: Remove all items from cart. Used by Task Service after successful payment.
+      responses:
+        "200":
+          description: Cart cleared
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Cart cleared
+                required:
+                  - message
   /cart/items/{itemId}:
     put:
       summary: Update item quantity
@@ -176,7 +193,7 @@ paths:
   /cart/checkout:
     post:
       summary: Checkout cart
-      description: Send cart data to Task Service to create order.
+      description: Send checkout command to Task Service. Saga orchestration is handled in Task Service.
       requestBody:
         required: true
         content:
@@ -208,7 +225,7 @@ paths:
                   - requestId
                   - message
         "400":
-          description: Checkout failed or cart empty
+          description: Checkout failed
           content:
             application/json:
               schema:
@@ -216,6 +233,6 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: Cart is empty
+                    example: Checkout failed
                 required:
                   - error
