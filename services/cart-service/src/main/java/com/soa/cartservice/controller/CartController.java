@@ -2,8 +2,6 @@ package com.soa.cartservice.controller;
 
 import com.soa.cartservice.dto.AddCartItemRequest;
 import com.soa.cartservice.dto.CartItemResponse;
-import com.soa.cartservice.dto.CheckoutRequest;
-import com.soa.cartservice.dto.CheckoutResponse;
 import com.soa.cartservice.dto.GetCartResponse;
 import com.soa.cartservice.dto.MessageResponse;
 import com.soa.cartservice.dto.UpdateQuantityRequest;
@@ -11,15 +9,8 @@ import com.soa.cartservice.entity.CartItem;
 import com.soa.cartservice.repository.CartItemRepository;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,17 +20,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("/cart")
 public class CartController {
     private final CartItemRepository cartItemRepository;
-    private final RestTemplate restTemplate = new RestTemplate();
-
-    @Value("${TASK_SERVICE_URL:http://task-service:5000}")
-    private String taskServiceBaseUrl;
 
     public CartController(CartItemRepository cartItemRepository) {
         this.cartItemRepository = cartItemRepository;
@@ -97,38 +82,5 @@ public class CartController {
     public ResponseEntity<MessageResponse> clearCart() {
         cartItemRepository.deleteAll();
         return ResponseEntity.ok(new MessageResponse("Cart cleared"));
-    }
-
-    @PostMapping("/checkout")
-    public ResponseEntity<CheckoutResponse> checkout(@Valid @RequestBody CheckoutRequest request) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("phone", request.getPhone());
-        payload.put("address", request.getAddress());
-
-        try {
-            ResponseEntity<Map<String, Object>> taskResponse = restTemplate.exchange(
-                    taskServiceBaseUrl + "/task/checkout",
-                    HttpMethod.POST,
-                    new HttpEntity<>(payload),
-                    new ParameterizedTypeReference<>() {
-                    });
-
-            if (!taskResponse.getStatusCode().is2xxSuccessful() || taskResponse.getBody() == null) {
-                throw new IllegalArgumentException("Checkout failed");
-            }
-
-            Object statusObj = taskResponse.getBody().get("status");
-            if (statusObj != null && "PAYMENT_FAILED".equals(String.valueOf(statusObj))) {
-                throw new IllegalArgumentException("Checkout failed");
-            }
-
-            Object requestIdObj = taskResponse.getBody().get("requestId");
-            String requestId = requestIdObj == null ? "" : String.valueOf(requestIdObj);
-
-            return ResponseEntity.status(HttpStatus.ACCEPTED)
-                    .body(new CheckoutResponse(requestId, "Order is being processed"));
-        } catch (RestClientException ex) {
-            throw new IllegalArgumentException("Checkout failed");
-        }
     }
 }

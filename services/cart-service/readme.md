@@ -1,6 +1,6 @@
 # cart-service
 
-cart-service quản lý giỏ hàng và bắt đầu quy trình checkout. Service lưu trạng thái giỏ hàng trong MySQL và gọi sang task-service qua Docker Compose DNS khi checkout.
+cart-service quản lý giỏ hàng. Service lưu trạng thái giỏ hàng trong MySQL để task-service sử dụng trong quy trình checkout saga.
 
 ## Yêu cầu
 
@@ -19,7 +19,6 @@ Service đọc cấu hình từ biến môi trường:
 - `DB_NAME` - mặc định `cart_db`
 - `DB_USER` - mặc định `admin`
 - `DB_PASSWORD` - mặc định `changeme`
-- `TASK_SERVICE_URL` - mặc định `http://task-service:5000`
 
 Trong [docker-compose.yml](../../docker-compose.yml), service này được map ra host ở port `5002`.
 
@@ -58,22 +57,7 @@ Trả về:
 - `DELETE /cart/items/{itemId}` - xóa item khỏi giỏ
 - `DELETE /cart/clear` - xóa toàn bộ giỏ hàng
 
-### Checkout
-
-`POST /cart/checkout`
-
-Request mẫu:
-
-```json
-{
-  "phone": "0900000000",
-  "address": "123 Nguyen Trai"
-}
-```
-
-Service sẽ gọi sang task-service để tạo đơn, xử lý thanh toán và clear giỏ nếu checkout thành công.
-
 ## Ghi chú
 
 - API spec: [docs/api-specs/cart-service.yaml](../../docs/api-specs/cart-service.yaml)
-- Service này phụ thuộc vào `task-service` khi checkout
+- Checkout entrypoint cho client nằm ở task-service: `POST /task/checkout`
